@@ -21,7 +21,6 @@ else if(env.BRANCH_NAME ==~ "master") {
     aws_environment = 'Prod'
 }
 def random_name = "${env.BRANCH_NAME}-${ UUID.randomUUID().toString()}"
-def ami_id = ''
 node("packer"){
     stage('Pull Repo') {
         git url: 'https://github.com/ikambarov/packer.git'
@@ -35,13 +34,12 @@ node("packer"){
                 sh """
                     packer build apache.json | tee output.log
                 """
-                ami_id = sh (script: "cat output.log | grep ${aws_region_var} | awk '{print \$2}'", returnstDout: true)
             }
             stage('Trigger Deploy Instance'){
-                build wait: false, job: 'terraform-ec2', parameters: [
+                build wait: false, job: 'terraform-ec2-by-name', parameters: [
                     string(name: 'ACTION', value: 'Apply'),
                     string(name: 'ENVIRONMENT', value: "${aws_environment}"),
-                    string(name: 'AMI_ID', value: "${ami_id}")
+                    string(name: 'AMI_NAME', value: "${random_name}")
                 ]
             }
         }
